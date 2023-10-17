@@ -57,10 +57,10 @@ export const usersRoutes = async (app: FastifyInstance) => {
     async (req, replay) => {
       const { sessionId } = req.cookies
       const user = await knex('users').where('session_id', sessionId).select()
-      const snacks = await knex('snacks').where('user_id', user[0].id).select()
+      const meals = await knex('meals').where('user_id', user[0].id).select()
 
       let auxSequence = 0
-      const summary = snacks.reduce(
+      const summary = meals.reduce(
         (acc, meal) => {
           if (meal.on_diet) {
             acc.onDiet++
@@ -74,7 +74,7 @@ export const usersRoutes = async (app: FastifyInstance) => {
           return acc
         },
         {
-          totalMeals: snacks.length,
+          totalMeals: meals.length,
           onDiet: 0,
           offDiet: 0,
           bestSequence: 0,
