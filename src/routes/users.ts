@@ -2,6 +2,7 @@ import { FastifyInstance } from 'fastify'
 import { randomUUID } from 'node:crypto'
 import { z } from 'zod'
 import { knex } from '../database'
+import { checkSessionIdExists } from '../preHandlers/check-session-id-exists'
 
 export const usersRoutes = async (app: FastifyInstance) => {
   app.get('/', async (req) => {
@@ -50,4 +51,37 @@ export const usersRoutes = async (app: FastifyInstance) => {
       data: user.username,
     })
   })
+  app.get(
+    '/summary/:userId',
+    { preHandler: [checkSessionIdExists] },
+    async (req, replay) => {
+      const { sessionId } = req.cookies
+      const user = await knex('users').where('session_id', sessionId).select()
+      const snacks = await knex('snacks').where('user_id', user[0].id).select()
+
+      let auxSequence = 0
+      const summary = snacks.reduce(
+        (acc, meal) => {
+          if (meal.on_diet) {
+            acc.onDiet++
+            auxSequence++
+          } else {
+            auxSequence = 0
+            acc.offDiet++
+          }
+          acc.bestSequence =
+            auxSequence > acc.bestSequence ? auxSequence : acc.bestSequence
+          return acc
+        },
+        {
+          totalMeals: snacks.length,
+          onDiet: 0,
+          offDiet: 0,
+          bestSequence: 0,
+        },
+      )
+
+      replay.status(200).send(summary)
+    },
+  )
 }

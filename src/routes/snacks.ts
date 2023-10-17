@@ -5,7 +5,7 @@ import { knex } from '../database'
 import { checkSessionIdExists } from '../preHandlers/check-session-id-exists'
 
 type SnackParams = {
-  snackId: string
+  snackId?: string
 }
 type SnackBody = {
   description: string
@@ -18,7 +18,14 @@ const validateSnacksParamsData = (params: SnackParams) => {
     snackId: z.string().uuid(),
   })
 
-  return schema.parse(params)
+  const schemaParsed = schema.safeParse(params)
+
+  const { success } = schemaParsed
+  if (!success) {
+    return
+  }
+
+  return schemaParsed.data.snackId
 }
 
 const validateSnacksBodyData = (body: SnackBody) => {
@@ -65,7 +72,7 @@ export const snacksRoutes = async (app: FastifyInstance) => {
     '/:snackId',
     { preHandler: checkSessionIdExists },
     async (req, replay) => {
-      const { snackId } = validateSnacksParamsData(req.params)
+      const snackId = validateSnacksParamsData(req.params)
 
       const { sessionId } = req.cookies
       const { description, on_diet } = validateSnacksBodyData(req.body)
@@ -84,36 +91,47 @@ export const snacksRoutes = async (app: FastifyInstance) => {
         updated_at: String(new Date()),
       }
       await knex('snacks').where('id', snackId).update(updatedSnack)
-      console.log('oi')
+
       return replay.status(200).send({
         message: 'Snack updated successfully',
       })
     },
   )
 
-  app.get('/', { preHandler: checkSessionIdExists }, async (req, replay) => {
-    const { sessionId } = req.cookies
+  app.get<{ Params: SnackParams }>(
+    '/:userId',
+    { preHandler: checkSessionIdExists },
+    async (req, replay) => {
+      const { sessionId } = req.cookies
+      const userId = validateSnacksParamsData(req.params)
+      const user = await getUserBySessionId(sessionId ?? '', replay)
 
-    const user = await getUserBySessionId(sessionId ?? '', replay)
+      if (userId && user) {
+        const snack = await knex('snacks').where('user_id', userId).select()
+        return {
+          snack,
+        }
+      }
 
-    if (!user) {
-      return replay.status(303).send({
-        message: 'user has not meals stored',
-      })
-    }
+      if (!user) {
+        return replay.status(303).send({
+          message: 'user has not meals stored',
+        })
+      }
 
-    const userSnacks = await knex('snacks').where('user_id', user.id).select()
+      const userSnacks = await knex('snacks').where('user_id', user.id).select()
 
-    return {
-      userSnacks,
-    }
-  })
+      return {
+        userSnacks,
+      }
+    },
+  )
 
   app.delete<{ Params: SnackParams }>(
     '/:snackId',
     { preHandler: checkSessionIdExists },
     async (req, replay) => {
-      const { snackId } = validateSnacksParamsData(req.params)
+      const snackId = validateSnacksParamsData(req.params)
       const { sessionId } = req.cookies
       await getUserBySessionId(sessionId ?? '', replay)
 
