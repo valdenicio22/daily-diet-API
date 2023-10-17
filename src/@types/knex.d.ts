@@ -10,11 +10,11 @@ declare module 'knex/types/tables' {
     }
     snacks: {
       id: string
-      description?: string
-      isOnTheDiet: boolean
+      description: string
+      on_diet: boolean
       created_at: string
       updated_at: string
-      session_id?: string
+      user_id?: string
     }
   }
 }
