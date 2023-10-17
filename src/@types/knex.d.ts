@@ -6,7 +6,7 @@ declare module 'knex/types/tables' {
     users: {
       id: string
       username: string
-      session_id?: string
+      session_id: string
     }
     snacks: {
       id: string
@@ -14,7 +14,7 @@ declare module 'knex/types/tables' {
       on_diet: boolean
       created_at: string
       updated_at: string
-      user_id?: string
+      user_id: string
     }
   }
 }
